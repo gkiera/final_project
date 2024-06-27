@@ -125,6 +125,22 @@ kickstarter_df %>%
 kickstarter_df %>%
   select(status) %>%
   filter(as.integer(status) == 2)
+#canceled
+kickstarter_df %>%
+  select(status) %>%
+  filter(as.integer(status) == 1)
+#NA
+kickstarter_df %>%
+  select(status) %>%
+  filter(is.na(status))
+#live
+kickstarter_df %>%
+  select(status) %>%
+  filter(as.integer(status) == 3)
+#suspended
+kickstarter_df %>%
+  select(status) %>%
+  filter(as.integer(status) == 5)
 #all status but live
 kickstarter_df %>%
   select(status) %>%
@@ -154,7 +170,7 @@ kickstarter_df <- kickstarter_df %>% rename(id = ID,
 kickstarter_df <- kickstarter_df %>% filter(as.integer(status) != 3, na.rm = TRUE)
 
 #remove suspended projects
-kickstarter_df <- kickstarter_df %>% filter(as.integer(status) != 3, na.rm = TRUE)
+kickstarter_df <- kickstarter_df %>% filter(as.integer(status) != 5, na.rm = TRUE)
 
 #remove projects with 0 backers
 kickstarter_df <- kickstarter_df %>% filter(backers > 0)
@@ -301,15 +317,15 @@ There are discrepancies between the mean amount pledged and median percent of go
 The highest median percent of goal reached in each area are:
 
 - Main category - Comics (105%)
-- Technology subcategory - Camera equipment, DIY electronics (100%)
-- Currency - Hong Kong Dollar (49%)
-- Country - Hong Kong (49%)
+- Technology subcategory - Camera equipment (101%)
+- Currency - Hong Kong Dollar (46%)
+- Country - Hong Kong (46%)
 
 The lowest median percent of goal reached in each area are:
 
 - Main category - Journalism, Technology (6%)
 - Technology subcategory - Apps, Web (1%)
-- Currency - Norwegian Krone (6%)
+- Currency - Norwegian Krone (7%)
 - Country - Italy (5%)
 
 - What exceptions or caveats do you have in regards to your analysis you did?
