@@ -1,0 +1,329 @@
+---
+title: "Final Data Project"
+author: "Kiera Gibson"
+output: html_notebook
+---
+
+# Final Data Project
+
+## Your objectives!
+
+To complete this project there are a few requirements you will need to fulfill. Remember that you are not on your own for this project! Data science is done best as a community, so please ask others (and instructors) questions you have when you get stuck!
+
+1. Clearly state the data science question and goal for the analysis you are embarking on.
+
+2. This project should be completely uploaded and up to date on GitHub. Follow the steps in `Pushing and Pulling Changes` chapter for how to git add, commit, and push the changes you have done.
+
+3. Follow good organization principles -- you should at least have 2 folders: a `results` folder and a `data` folder. 4. 4. You should also have a README
+
+5. Make a resulting plot that you save to a file.
+
+6. Write up your final observations in regards to your original question. Note that some data science projects end with "This isn't what I thought it would be" or "that's strange" or "I think this is leading into another question I would need to investigate". Whatever your observations may be, write them up in your main R Markdown.
+
+7. When you feel your analysis is ready for review, send your instructor the GitHub link to your project so they can review it.
+
+8. Pat yourself on the back for all this work! You are a data scientist!
+
+## Data Sources
+
+For this project you will use whatever data you choose.
+
+Refer back to our [Finding Data chapter](https://datatrail-jhu.github.io/DataTrail/finding-data.html) for more info on finding data.
+
+Some options for places to find data are:
+
+- [Kaggle](https://datatrail-jhu.github.io/DataTrail/finding-data.html#kaggle)
+- [FiveThirtyEight](https://datatrail-jhu.github.io/DataTrail/finding-data.html#fivethirtyeight-data)
+- You can see datasets you already have in R by running this command: `ls("package:datasets")`.
+
+You are not limited to these options for finding your data.
+
+This data set was created by kemical on Kaggle.
+https://www.kaggle.com/datasets/kemical/kickstarter-projects
+
+Data was collected from kickstarter.com.
+
+## The goal of this analysis
+
+We are analyzing data on projects on Kickstarter, a crowdfunding platform. What is the success of projects with certain attributes?
+
+## Set up
+
+Load packages you will need for this analysis.
+
+```{r}
+## you can add more, or change...these are suggestions
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Set up directories
+
+Set up the directories you will need.
+
+```{r}
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+if (!dir.exists("results")) {
+  dir.create("results")
+}
+```
+
+
+## Get the data
+
+This data set was created by kemical on Kaggle.
+https://www.kaggle.com/datasets/kemical/kickstarter-projects
+
+Data was collected from kickstarter.com.
+
+The project attributes included in this data set are:
+
+- ID
+- Name
+- Main category
+- Subcategory
+- Date launched
+- Goal (original currency)
+- Goal (USD conversion by Fixer.io API)
+- Deadline
+- Status
+- Country
+- Currency
+- Number of backers
+- Amount pledged (original currency)
+- Amount pledged (USD conversion by Kickstarter)
+- Amount pledged (USD conversion by Fixer.io API)
+
+
+```{r}
+kickstarter_df <- read_csv('data/ks-projects-201801.csv')
+```
+
+Explore your data here
+
+```{r}
+summary(kickstarter_df)
+kickstarter_df %>% dplyr::count(goal)
+levels(kickstarter_df$status)
+levels(kickstarter_df$country)
+#USD sum
+sum(kickstarter_df$usd_pledged, na.rm = TRUE)
+#successful USD sum
+kickstarter_df %>%
+  select(status, usd_pledged) %>%
+  filter(as.integer(status) == 4) %>%
+  summarise(sum_successful_pledged = sum(usd_pledged, na.rm = TRUE))
+#successful
+kickstarter_df %>%
+  select(status) %>%
+  filter(as.integer(status) == 4)
+#failed
+kickstarter_df %>%
+  select(status) %>%
+  filter(as.integer(status) == 2)
+#all status but live
+kickstarter_df %>%
+  select(status) %>%
+  filter(as.integer(status) != 3, na.rm = TRUE)
+ggplot(kickstarter_df, aes()) +
+  geom_density()
+```
+
+## Cleaning the data
+
+```{r}
+kickstarter_df$country <- na_if(kickstarter_df$country, "N,0\"")
+
+kickstarter_df$state <- na_if(kickstarter_df$state, "undefined")
+
+kickstarter_df <- kickstarter_df %>% mutate(state = as.factor(state),
+                                            currency = as.factor(currency),
+                                            category = as.factor(category),
+                                            main_category = as.factor(main_category),
+                                            country = as.factor(country))
+
+kickstarter_df <- kickstarter_df %>% rename(id = ID,
+                                            status = state,
+                                            usd_pledged = "usd pledged")
+
+#remove live projects
+kickstarter_df <- kickstarter_df %>% filter(as.integer(status) != 3, na.rm = TRUE)
+
+#remove suspended projects
+kickstarter_df <- kickstarter_df %>% filter(as.integer(status) != 3, na.rm = TRUE)
+
+#remove projects with 0 backers
+kickstarter_df <- kickstarter_df %>% filter(backers > 0)
+
+#add percent_goal_raised column
+kickstarter_df <- kickstarter_df %>% mutate(percent_goal_raised = pledged / goal * 100)
+```
+
+## Plot the data!
+
+```{r}
+options(scipen = 999)
+```
+
+```{r}
+#total raised per main category (USD conversion by Kickstarter)
+kickstarter_df %>%
+  ggplot(aes(main_category, usd_pledged)) + geom_col() +
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.7,0))
+
+ggsave(filename = "total_usd_raised_main.png", path = "results/")
+
+#median raised per main category (USD conversion by Kickstarter)
+kickstarter_df %>%
+  group_by(main_category) %>%
+  summarise(usd_pledged = median(usd_pledged)) %>%
+  ggplot(aes(main_category, usd_pledged)) + geom_col() +
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.7,0)) +
+  geom_text((aes(label = round(usd_pledged, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "median_usd_raised_main.png", path = "results/")
+
+#median percent of goal raised per main category
+kickstarter_df %>%
+  group_by(main_category) %>%
+  summarise(percent_goal_raised = median(percent_goal_raised)) %>%
+  ggplot(aes(main_category, percent_goal_raised)) + geom_col() +
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.7,0)) +
+  geom_text((aes(label = round(percent_goal_raised, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "median_percent_raised_main.png", path = "results/")
+
+#average raised per technology subcategory (USD conversion by Kickstarter)
+filter(kickstarter_df, main_category == "Technology") %>%
+  group_by(category) %>%
+  summarise(usd_pledged = mean(usd_pledged)) %>%
+  ggplot(aes(category, usd_pledged)) + geom_col() +
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.7,0)) +
+  geom_text((aes(label = round(usd_pledged, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "mean_usd_raised_technology.png", path = "results/")
+
+#median percent of goal raised per technology subcategory
+filter(kickstarter_df, main_category == "Technology") %>%
+  group_by(category) %>%
+  summarise(percent_goal_raised = median(percent_goal_raised)) %>%
+  ggplot(aes(category, percent_goal_raised)) + geom_col() +
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.7,0)) +
+  geom_text((aes(label = round(percent_goal_raised, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "median_percent_raised_technology.png", path = "results/")
+
+#average raised per currency of project (USD conversion by Kickstarter)
+kickstarter_df %>%
+  group_by(currency) %>%
+  summarise(usd_pledged = mean(usd_pledged)) %>%
+  ggplot(aes(currency, usd_pledged)) + geom_col() +
+  geom_text((aes(label = round(usd_pledged, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "mean_usd_raised_currency.png", path = "results/")
+
+#median percent of goal raised per currency of project
+kickstarter_df %>%
+  group_by(currency) %>%
+  summarise(percent_goal_raised = median(percent_goal_raised)) %>%
+  ggplot(aes(currency, percent_goal_raised)) + geom_col() +
+  geom_text((aes(label = round(percent_goal_raised, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "median_percent_raised_currency.png", path = "results/")
+
+#average raised per country of project creator (USD conversion by Kickstarter)
+kickstarter_df %>%
+  group_by(country) %>%
+  summarise(usd_pledged = mean(usd_pledged)) %>%
+  ggplot(aes(country, usd_pledged)) + geom_col() +
+  geom_text((aes(label = round(usd_pledged, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "mean_usd_raised_country.png", path = "results/")
+
+#median percent of goal raised per country of project
+kickstarter_df %>%
+  group_by(country) %>%
+  summarise(percent_goal_raised = median(percent_goal_raised)) %>%
+  ggplot(aes(country, percent_goal_raised)) + geom_col() +
+  geom_text((aes(label = round(percent_goal_raised, digits = 0), vjust = -0.2)))
+
+ggsave(filename = "median_percent_raised_country.png", path = "results/")
+
+#goal vs percent of goal raised
+kickstarter_df %>%
+  filter(percent_goal_raised < 1000) %>%
+  ggplot(aes(goal, percent_goal_raised)) + geom_point() + xlim(0,1000000)
+
+ggsave(filename = "percent_raised_goal.png", path = "results/")
+
+#pledged vs percent of goal raised
+kickstarter_df %>%
+  filter(percent_goal_raised < 1000) %>%
+  ggplot(aes(pledged, percent_goal_raised)) + geom_point() + xlim(0,1000000)
+
+ggsave(filename = "percent_raised_pledged.png", path = "results/")
+
+#percent of goal raised density
+kickstarter_df %>%
+  filter(percent_goal_raised < 400) %>%
+  ggplot(aes(percent_goal_raised)) + geom_density()
+
+ggsave(filename = "percent_raised_density.png", path = "results/")
+```
+
+
+## Get the stats
+
+```{r}
+fit <- lm(backers ~ goal, data = kickstarter_df)
+summary(fit)
+
+lm(percent_goal_raised ~ goal, data = kickstarter_df) %>% summary()
+
+fit %>% ggplot(aes(backers)) + geom_density() + xlim(0,400)
+
+fit %>% ggplot(aes(goal)) + geom_density() + xlim(0,100000)
+```
+
+
+### Conclusion
+
+Write up your thoughts about this data science project here and answer the following questions:
+
+- What did you find out in regards to your original question?
+
+There are discrepancies between the mean amount pledged and median percent of goal reached in all areas investigated; main category, technology subcategory, currency, and country.
+
+The highest median percent of goal reached in each area are:
+
+- Main category - Comics (105%)
+- Technology subcategory - Camera equipment, DIY electronics (100%)
+- Currency - Hong Kong Dollar (49%)
+- Country - Hong Kong (49%)
+
+The lowest median percent of goal reached in each area are:
+
+- Main category - Journalism, Technology (6%)
+- Technology subcategory - Apps, Web (1%)
+- Currency - Norwegian Krone (6%)
+- Country - Italy (5%)
+
+- What exceptions or caveats do you have in regards to your analysis you did?
+
+Some projects set extremely low goals, such as $1, and exceed their goal as much as 10427789%. These projects may skew the results of an analysis using percent_goal_raised.
+
+- What follow up questions do you have?
+
+How would these results change if using a binary 'successful/not successful', instead of median percent of goal reached?
+
+## Print out session info
+
+Session info is a good thing to print out at the end of your notebooks so that you (and other folks) referencing your notebooks know what software versions and libraries you used to run the notebook.
+
+```{r}
+sessionInfo()
+```
